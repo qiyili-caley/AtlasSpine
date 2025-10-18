@@ -1,0 +1,7 @@
+# YOLO OBB¼¹×µ×µ¹Ç¼ì²âÊı¾İ¼¯ÅäÖÃ
+path: yolo_spine_dataset
+train: images/train
+val: images/val
+
+names:
+  0: "vertebra" 

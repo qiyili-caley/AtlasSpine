@@ -1,0 +1,21 @@
+sample and sample_label: Original dataset and annotation files.
+
+convert_dataset.py: Converts original annotations from JSON format to TXT format. Each TXT file stores the vertebra class and the relative coordinates of the four key points for each vertebra. The script also splits the dataset and saves it in the yolo_spine_dataset directory.
+
+train.py and predict.py: Used for model training and prediction, respectively. Training results and prediction outputs are saved in the spine_detection and results_obb folders.
+
+post_processing.py: Performs post-processing on the prediction results, including:
+
+Filtering out false detections;
+
+Adjusting vertebra angles to align along the spinal axis;
+
+Retaining 17 major vertebrae based on recognition results.
+
+mask_with_direction.py and txt_result_turn_mask.py: Generate direction arrows and vertebra masks to verify the correctness of detection and orientation.
+
+classification.py: Trains an XGBoost model using the predicted vertebra data. Input features include global and local spinal metrics such as Cobb angle and curvature.
+
+screw_predict.py: Reads the trained classification results from TXT files and predicts whether pedicle screws are required. The results are saved in screw_results.xlsx.
+
+test.py: Evaluates the accuracy of the classifier.
