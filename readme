@@ -1,21 +1,41 @@
-sample and sample_label: Original dataset and annotation files.
+# 🩻 Spine Detection and Surgical Prediction
 
-convert_dataset.py: Converts original annotations from JSON format to TXT format. Each TXT file stores the vertebra class and the relative coordinates of the four key points for each vertebra. The script also splits the dataset and saves it in the yolo_spine_dataset directory.
+**脊椎检测与手术预测**
 
-train.py and predict.py: Used for model training and prediction, respectively. Training results and prediction outputs are saved in the spine_detection and results_obb folders.
+---
 
-post_processing.py: Performs post-processing on the prediction results, including:
+## 🧠 Overview | 项目简介
 
-Filtering out false detections;
+This repository provides a complete pipeline for **spine detection, post-processing, feature extraction, and surgical prediction** based on deep learning and traditional machine learning methods.
+本项目实现了一个基于深度学习与传统机器学习相结合的**脊椎检测、后处理、特征提取与手术预测**全流程系统。
 
-Adjusting vertebra angles to align along the spinal axis;
+---
 
-Retaining 17 major vertebrae based on recognition results.
+## 📁 Project Structure | 项目结构
 
-mask_with_direction.py and txt_result_turn_mask.py: Generate direction arrows and vertebra masks to verify the correctness of detection and orientation.
+```
+├── sample/                     # Original sample data | 原始样本数据  
+├── sample_label/               # Original annotation files | 原始标注文件  
+├── yolo_spine_dataset/         # Converted dataset for YOLO training | 转换后用于训练的数据集  
+├── spine_detection/            # Model training results | 模型训练结果  
+├── results_obb/                # Model prediction results | 模型预测结果  
+├── screw_results.xlsx          # Screw placement prediction results | 加钉预测结果表格  
+│
+├── convert_dataset.py          # Convert JSON annotations to TXT and split dataset | JSON标注转TXT并划分数据集  
+├── train.py                    # Training script for the detection model | 模型训练脚本  
+├── predict.py                  # Prediction script for detection results | 模型预测脚本  
+├── post_processing.py          # Post-processing of prediction results | 预测结果后处理  
+├── mask_with_direction.py      # Generate direction arrows and verify mask accuracy | 输出方向箭头与掩码验证  
+├── txt_result_turn_mask.py     # Auxiliary script for mask verification | 掩码验证辅助脚本  
+├── classification.py           # XGBoost classifier: compute Cobb angle & curvature features | XGBoost分类器，计算Cobb角度与曲率特征  
+├── screw_predict.py            # Predict screw placement based on classification results | 是否加钉预测脚本  
+└── test.py                     # Evaluate classifier accuracy | 分类器精度验证脚本  
 
-classification.py: Trains an XGBoost model using the predicted vertebra data. Input features include global and local spinal metrics such as Cobb angle and curvature.
+## 🧩 Key Features | 主要功能
 
-screw_predict.py: Reads the trained classification results from TXT files and predicts whether pedicle screws are required. The results are saved in screw_results.xlsx.
+* ✅ Automatic spine detection and labeling
+* ✅ Post-processing
+* ✅ Feature extraction of Cobb angle & curvature
+* ✅ Screw placement prediction
+* ✅ XGBoost-based classification and evaluation
 
-test.py: Evaluates the accuracy of the classifier.
