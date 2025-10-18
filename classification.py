@@ -48,7 +48,7 @@ ids = []
 label_dir = 'results_obb/exp'
 
 
-# ... 您原来的其他代码
+
 def add_sliding_window_features(df, col, window=3):
     df[f'{col}_mean_w{window}'] = df[col].rolling(window, center=True, min_periods=1).mean()
     df[f'{col}_std_w{window}'] = df[col].rolling(window, center=True, min_periods=1).std().fillna(0)
@@ -430,5 +430,6 @@ except NameError as e:
 except Exception as e:
     print(f"评估模块执行失败: {e}")
     import traceback
+
 
     traceback.print_exc()
