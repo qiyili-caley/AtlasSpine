@@ -18,17 +18,17 @@ The dataset used in this project is publicly shared on Google Drive and includes
 本项目所使用的数据集已在 Google Drive 上公开共享，包含 手术前后脊柱X光片 以及配套的标注文件。
 
 Dataset Contents | 数据集内容说明
-datasets/
-├── before_surgery                # Pre-surgery X-ray images | 手术前X光片  
-├── after_surgery                 # Post-surgery X-ray images | 手术后X光片  
-├── label_seg                     # Vertebra annotations in JSON and jpg format | 骨骼识别JSON和jpg标注文件
-├── label_screw.xlsx              # Screw placement labels | 加钉预测Excel标注文件    
+datasets  
+├── before_surgery            # Pre-surgery X-ray images | 手术前X光片  
+├── after_surgery             # Post-surgery X-ray images | 手术后X光片  
+├── label_seg                 # Vertebra annotations in JSON and jpg format | 骨骼识别JSON和jpg标注  
+├── label_screw.xlsx          # Screw placement labels | 加钉预测Excel标注文件    
 
 🔗 Download Link | 下载链接
 
-👉 Click here to access the dataset on Google Drive
+[👉 Click here to access the dataset on Google Drive](https://drive.google.com/drive/u/2/folders/1utVv9962s883051bhD2wOeqe8skQfJIH)
 
-👉 点击此处访问 Google Drive 数据集
+[👉 点击此处访问 Google Drive 数据集](https://drive.google.com/drive/u/2/folders/1utVv9962s883051bhD2wOeqe8skQfJIH)
 
 ## Project Structure | 项目结构  
 
@@ -59,5 +59,6 @@ datasets/
 * Feature extraction of Cobb angle & curvature  
 * Screw placement prediction  
 * XGBoost-based classification and evaluation  
+
 
 
