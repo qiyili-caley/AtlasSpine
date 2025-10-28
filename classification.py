@@ -1,14 +1,16 @@
 import pandas as pd
 import numpy as np
 import os
+import random
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectFromModel
+from model_evaluation import SpineModelEvaluator
 import joblib
 import xgboost as xgb
 import matplotlib.pyplot as plt
-
+plt.rcParams.update({'font.size': 18})
 
 def find_or_create_label_file():
     """查找或创建标签文件"""
@@ -17,7 +19,7 @@ def find_or_create_label_file():
         return pd.read_excel('label_screw_flipped.xlsx', header=0, index_col=None,
                              usecols=lambda x: x not in ['ordinal'], engine="openpyxl")
 
-    # 如果不存在，尝试在项目目录中搜索
+    # 如果不存在
     for root, dirs, files in os.walk('.'):
         if 'label_screw_flipped.xlsx' in files:
             file_path = os.path.join(root, 'label_screw_flipped.xlsx')
@@ -25,7 +27,7 @@ def find_or_create_label_file():
             return pd.read_excel(file_path, header=0, index_col=None,
                                  usecols=lambda x: x not in ['ordinal'], engine="openpyxl")
 
-    # 如果还是找不到，尝试重新生成
+    # 如果还是找不到
     print("未找到 label_screw_flipped.xlsx，尝试重新生成...")
     if os.path.exists('label_screw.xlsx'):
         df = pd.read_excel('label_screw.xlsx')
@@ -41,7 +43,7 @@ def find_or_create_label_file():
 # 使用修复后的函数
 label_df = find_or_create_label_file()
 
-# 剩下的代码保持不变...
+
 features = []
 labels = []
 ids = []
@@ -58,12 +60,8 @@ def add_sliding_window_features(df, col, window=3):
 # 1. 读取加钉标签
 # label_df = pd.read_excel('label_screw_flipped.xlsx', header=0, index_col=None, usecols=lambda x: x not in ['ordinal'], engine="openpyxl")
 
-# features = []
-# labels = []
-# ids = []
-# label_dir = 'results_obb/exp'
 
-# 记录特征名（顺序必须与local_feat一致！）
+# 记录特征名
 local_feat = [
     'norm_cx', 'norm_cy', 'norm_id', 'height_ratio', 'hw_ratio', 'angle_deg', 'wedge', 'rot_grad', 'curvature', 'coronal_offset',
     # 滑动窗口特征
@@ -78,7 +76,7 @@ global_feat_names = ['cobb_angle', 'coronal_offset_rate', 'sagittal_balance', 'a
 all_feature_names = global_feat_names + local_feat
 
 for col in label_df.columns:
-    y_list = label_df[col].values  # 0/1，每一行对应一个椎骨
+    y_list = label_df[col].values  
     label_ids = np.arange(1, len(y_list) + 1)
     label_df_this = pd.DataFrame({'id': label_ids, 'y': y_list})
 
@@ -171,58 +169,103 @@ for col in label_df.columns:
 X = np.array(features)
 y = np.array(labels)
 
-# ========== 1. 标准化 ==========
+
+
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
+
+# ===============================
+#  1. 标准化
+# ===============================
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 joblib.dump(scaler, 'spine_nail_scaler.pkl')
 
 print(f"样本数: {X.shape[0]}, 特征维度: {X.shape[1]}")
 
-# ========== 2. 特征自动筛选 ==========
-# 用一个弱XGBoost做特征筛选（不影响主模型效果）
-selector_clf = xgb.XGBClassifier(
-    n_estimators=80, max_depth=6, learning_rate=0.03,
-    reg_alpha=2.0, reg_lambda=1.0,
-    scale_pos_weight=np.sum(y == 0) / np.sum(y == 1),
-     eval_metric='logloss', random_state=42
-)
-selector = SelectFromModel(selector_clf, threshold="median")  # 选一半重要的特征
-selector.fit(X_scaled, y)
-X_sel = selector.transform(X_scaled)
-joblib.dump(selector, 'spine_nail_feature_selector.pkl')
+# ===============================
+#  2. 稳定特征筛选（多次平均 XGBoost 重要性）
+# ===============================
+n_runs = 5  # 运行次数，可改为10提升稳健性
+all_importances = np.zeros((n_runs, X.shape[1]))
 
-# 输出被选中的特征名
-selected_names = np.array(all_feature_names)[selector.get_support()]
-print("被选中的特征：")
+for i in range(n_runs):
+    clf = xgb.XGBClassifier(
+        n_estimators=100,
+        max_depth=6,
+        learning_rate=0.05,
+        reg_alpha=2.0,
+        reg_lambda=1.0,
+        scale_pos_weight=np.sum(y == 0) / np.sum(y == 1),
+        eval_metric='logloss',
+        random_state=RANDOM_SEED + i,
+        n_jobs=1, 
+    )
+    clf.fit(X_scaled, y)
+    all_importances[i] = clf.feature_importances_
+
+# 平均特征重要性
+mean_importance = np.mean(all_importances, axis=0)
+
+# 按中位数阈值筛选
+threshold = np.median(mean_importance)
+selected_mask = mean_importance >= threshold
+selected_names = np.array(all_feature_names)[selected_mask]
+X_sel = X_scaled[:, selected_mask]
+
+print("\n 稳定特征筛选完成：")
 for name in selected_names:
-    print(name)
-print(f"筛选后特征数: {len(selected_names)}")
+    print(f" - {name}")
+print(f"共选出 {len(selected_names)} 个特征")
 
-# ========== 3. 主模型训练 ==========
-X_train, X_test, y_train, y_test = train_test_split(X_sel, y, test_size=0.1, random_state=42)
+# 保存筛选结果
+np.save("mean_feature_importance.npy", mean_importance)
+with open("selected_features.txt", "w") as f:
+    for name in selected_names:
+        f.write(name + "\n")
+
+# ===============================
+#  3. 主模型训练
+# ===============================
+X_train, X_test, y_train, y_test = train_test_split(
+    X_sel, y, test_size=0.1, random_state=RANDOM_SEED
+)
 n_pos = np.sum(y_train == 1)
 n_neg = np.sum(y_train == 0)
 scale_pos_weight = n_neg / n_pos
 
 clf = xgb.XGBClassifier(
-    n_estimators=10000,
+    n_estimators=600,
     max_depth=10,
     learning_rate=0.01,
     subsample=0.8,
     colsample_bytree=0.8,
-    gamma=1.0,
-    min_child_weight=6,
+    gamma=0.5,
+    min_child_weight=5,
     scale_pos_weight=scale_pos_weight,
     reg_alpha=0.1,
-    reg_lambda=1.0,
+    reg_lambda=0.5,
     eval_metric='logloss',
-    random_state=42
+    random_state=RANDOM_SEED,
+    n_jobs=1
 )
 clf.fit(X_train, y_train)
-y_pred = clf.predict(X_test)
 
+y_pred = clf.predict(X_test)
+print("\n 模型评估结果：")
 print(classification_report(y_test, y_pred))
 
+# 保存主模型
+joblib.dump(clf, "spine_nail_xgb_stable.pkl")
+
+# ===============================
+#  4. 可解释性分析（SHAP）
+# ===============================
+from model_evaluation import SpineModelEvaluator
+analyzer = SpineModelEvaluator("spine_nail_xgb_stable.pkl")
+analyzer.shap_analysis(X_test)
+'''
 # ========== 4. 特征重要性输出 ==========
 importances = clf.feature_importances_
 indices = np.argsort(importances)[::-1]
@@ -233,14 +276,25 @@ try:
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(12, 8))
-    sns.barplot(x=importances[indices], y=[selected_names[i] for i in indices])
-    plt.title('Top Feature Importances (XGBoost)')
-    plt.xlabel('Importance')
+    sns.barplot(
+        x=importances[indices],
+        y=[selected_names[i] for i in indices],
+    )
+
+    # 调整字体大小
+    plt.title('Top Feature Importances (XGBoost)', fontsize=18)
+    plt.xlabel('Importance', fontsize=18)
+    plt.ylabel('Features', fontsize=18)
+
+    # 调整坐标轴刻度文字大小
+    plt.tick_params(axis='x', labelsize=16)
+    plt.tick_params(axis='y', labelsize=16)
+
     plt.tight_layout()
     plt.savefig("feature_importance.png", dpi=300, bbox_inches='tight')
-    plt.show(block=False)  # 非阻塞模式
-    plt.pause(2)  # 显示2秒后继续
-    plt.close()   # 关闭图形
+    plt.show(block=False) 
+    plt.pause(2)  
+    plt.close() 
     print("特征重要性图已保存")
 
 except ImportError:
@@ -431,5 +485,5 @@ except Exception as e:
     print(f"评估模块执行失败: {e}")
     import traceback
 
-
     traceback.print_exc()
+'''
