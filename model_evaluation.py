@@ -248,15 +248,14 @@ class SpineModelEvaluator:
         print("✓ 评估完成！")
 
 
-# 使用示例
+
 def main():
     """使用示例"""
-    # 假设您已经有了训练好的模型和测试数据
     evaluator = SpineModelEvaluator(
         model_path='spine_nail_xgb.pkl',
         scaler_path='spine_nail_scaler.pkl',
         selector_path='spine_nail_feature_selector.pkl',
-        feature_names=selected_names  # 从主程序传递
+        feature_names=selected_names  
     )
 
     # 执行评估
@@ -264,4 +263,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
