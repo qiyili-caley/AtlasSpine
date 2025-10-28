@@ -124,17 +124,17 @@ for txt_file in txt_files:
         continue
 
     features = extract_features(df)
-    # 1. 标准化
+    
     features_scaled = scaler.transform(features)
-    # 2. 特征选择
+    
     features_sel = selector.transform(features_scaled)
-    # 3. 预测
+    
     preds = clf.predict(features_sel)
     probs = clf.predict_proba(features_sel)[:, 1] if hasattr(clf, "predict_proba") else [None] * len(preds)
 
-    # 每个病例一列，字符串格式为 0(0.12) 或 1(0.87)
+    
     col = [f"{int(pred)}({prob:.2f})" if prob is not None else str(int(pred)) for pred, prob in zip(preds, probs)]
-    # 保证只有17行
+    
     if len(col) > 17:
         col = col[:17]
     elif len(col) < 17:
@@ -149,5 +149,5 @@ matrix.index = [f"{i+1}" for i in range(17)]  # 行标签可选
 matrix.to_excel(OUTPUT_EXCEL, index=True)
 print(f"预测完成，结果已保存至 {OUTPUT_EXCEL}")
 
-# 输出每条的特征数
+
 print(f"每个预测样本的特征数: {features.shape[1]}")
